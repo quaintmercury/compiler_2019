@@ -1,0 +1,13 @@
+#
+# Calculate the factorial of an integer, in an
+# interpreter or by compiling it to Duck Machine
+# object code.
+#
+x = read;
+fact = 1;
+while x do
+    fact = fact * x;
+    x = x - 1;
+od
+print fact;
+

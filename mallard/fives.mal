@@ -1,0 +1,20 @@
+# Count down from 100, printing
+# integers that are divisible by 5.
+
+x = 100;
+
+while x do
+
+  # If y divides x evenly,
+  # then y * (x / y) = x
+
+  remainder = x - 5 * (x / 5);
+
+  if remainder then
+     x = x - 1;
+  else
+     print x;
+     x = x - 1;
+  fi
+od
+
