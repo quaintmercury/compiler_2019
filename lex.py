@@ -76,10 +76,18 @@ class TokenCat(Enum):
     DIV = r"/"
     NEG = r"~"
     ABS = r"@"
-    ASSIGN = r"="
     VAR = r"[a-zA-Z_][a-zA-Z_]*"
     LPAREN = r"\("
     RPAREN = r"\)"
+    # Relations
+    EQ = r"=="
+    NE = r"!="
+    LE = r"<="
+    GE = r">="
+    GT = r">"
+    LT = r"<"
+    # Assignment (must be after == )
+    ASSIGN = r"="
     # Error processing
     error = "."           # catch-all for errors
     END = "###SHOULD NOT MATCH###"  # Not really a pattern

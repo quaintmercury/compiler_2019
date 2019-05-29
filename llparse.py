@@ -38,8 +38,9 @@ def parse(srcfile: TextIO) -> expr.Expr:
 #  program ::=  block
 #  block ::= { stmt }
 #  stmt ::=  assign | loop | ifstmt | printstmt
-#  whilestmt ::= 'while' exp 'do' block 'od'
-#  ifstmt ::= 'if' exp 'then' block ['else' block] 'fi'
+#  whilestmt ::= 'while' rel 'do' block 'od'
+#  ifstmt ::= 'if' rel 'then' block ['else' block] 'fi'
+#  rel ::= exp ('==' | '>=' | '<=' | '<' | '>' ) exp
 #  assignment ::=  VAR '=' exp
 #  exp ::= term { ('+'|'-') term }
 #  term ::= primary { ('*'|'/')  primary }
@@ -54,7 +55,6 @@ first["printstmt"] = {TokenCat.PRINT}
 first["assignment"] = {TokenCat.VAR}
 first["stmt"] = first["ifstmt"].union(first["whilestmt"], first["assignment"], first["printstmt"])
 first["exp"] = {TokenCat.VAR, TokenCat.INT, TokenCat.LPAREN, TokenCat.READ }
-
 
 # Initial version: Just sums
 
@@ -130,7 +130,7 @@ def _while(stream: TokenStream) -> expr.While:
     whilestmt ::= 'while' exp 'do' block 'od'
     """
     require(stream, TokenCat.WHILE, consume=True)
-    cond = _expr(stream)
+    cond = _rel(stream)
     require(stream, TokenCat.DO, consume=True)
     block = _block(stream)
     require(stream, TokenCat.OD, consume=True)
@@ -140,7 +140,7 @@ def _while(stream: TokenStream) -> expr.While:
 
 def _if(stream: TokenStream) -> expr.If:
     require(stream, TokenCat.IF, consume=True)
-    cond = _expr(stream)
+    cond = _rel(stream)
     require(stream, TokenCat.THEN, consume=True)
     then_block = _block(stream)
     if stream.peek().kind == TokenCat.ELSE:
@@ -151,6 +151,23 @@ def _if(stream: TokenStream) -> expr.If:
         result = expr.If(cond, then_block, elsepart=expr.Pass())
     require(stream, TokenCat.FI, consume=True)
     return result
+
+# All the comparisons are similar, so we'll
+# choose the class based on the token
+COMPARISONS = { TokenCat.EQ: expr.EQ,  TokenCat.NE: expr.NE,
+                TokenCat.LE: expr.LE, TokenCat.LT: expr.LT,
+                TokenCat.GE: expr.GE, TokenCat.GT: expr.GT
+              }
+
+def _rel(stream: TokenStream) -> expr.Comparison:
+    left = _expr(stream)
+    op = stream.take()
+    right = _expr(stream)
+    if op.kind in COMPARISONS:
+        clazz = COMPARISONS[op.kind]
+        return clazz(left, right)
+    else:
+        raise InputError(f"Expecting comparison, saw '{op.value}' instead")
 
 
 def _expr(stream: TokenStream) -> expr.Expr:

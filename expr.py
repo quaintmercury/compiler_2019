@@ -1,6 +1,7 @@
 """Expressions (for a calculator)
 M Young, January 2019
-Revised March 2019 for compiler project
+Revised March 2019 for compiler project;
+Revised May 2019 to add comparison operations
 """
 
 # Global variable NO_VALUE is defined below after IntConst
@@ -37,7 +38,7 @@ class Expr(object):
         """Implementations of __repr__ should return a string that looks like
         the constructor, e.g., Plus(IntConst(5), IntConst(4))
         """
-        raise NotImplementedError("Each concrete Expr class must define __repr__")
+        raise NotImplementedError(f"Class {self.__class__.__name__} doesn't define __repr__")
 
     def __eq__(self, other: "Expr") -> bool:
         raise NotImplementedError("__eq__ method not defined for class")
@@ -88,12 +89,16 @@ class BinOp(Expr):
         """Implementations of __repr__ should return a string that looks like
         the constructor, e.g., Plus(IntConst(5), IntConst(4))
         """
-        return f"{self.classname}({repr(self.left)}, {repr(self.right)})"
+        return f"{self.__class__.__name__}({repr(self.left)}, {repr(self.right)})"
 
     def __eq__(self, other: "Expr") -> bool:
         return type(self) == type(other) and  \
             self.left == other.left and \
             self.right == other.right
+
+    def _opcode(self) -> str:
+        """Which operation code do we use in the generated assembly code?"""
+        raise NotImplementedError("Each binary operator should define the _opcode method")
 
 
 class Plus(BinOp):
@@ -102,7 +107,6 @@ class Plus(BinOp):
     def __init__(self, left: Expr, right: Expr):
         super().__init__(left, right)
         self.opsym = "+"
-        self.classname = "Plus"
 
     def _apply(self, left: int, right: int) -> int:
         return left + right
@@ -114,7 +118,6 @@ class Minus(BinOp):
     def __init__(self, left: Expr, right: Expr):
         super().__init__(left, right)
         self.opsym = "-"
-        self.classname = "Minus"
 
     def _apply(self, left: int, right: int) -> int:
         return left - right
@@ -126,7 +129,6 @@ class Times(BinOp):
     def __init__(self, left: Expr, right: Expr):
         super().__init__(left, right)
         self.opsym = "*"
-        self.classname = "Times"
 
     def _apply(self, left: int, right: int) -> int:
         return left * right
@@ -138,7 +140,6 @@ class Div(BinOp):
     def __init__(self, left: Expr, right: Expr):
         super().__init__(left, right)
         self.opsym = "/"
-        self.classname = "Div"
 
     def _apply(self, left: int, right: int) -> int:
         return left // right
@@ -163,7 +164,7 @@ class UnOp(Expr):
         """Implementations of __repr__ should return a string that looks like
         the constructor, e.g., Plus(IntConst(5), IntConst(4))
         """
-        return f"{self.classname}({repr(self.left)})"
+        return f"{self.__class__.__name__}({repr(self.left)})"
 
     def __eq__(self, other: "Expr") -> bool:
         return type(self) == type(other) and  \
@@ -175,7 +176,6 @@ class Neg(UnOp):
     def __init__(self, left: Expr):
         super().__init__(left)
         self.opsym = "~"
-        self.classname = "Neg"
 
     def _apply(self, left: int) -> int:
         return 0 - left
@@ -187,7 +187,6 @@ class Abs(UnOp):
     def __init__(self, left: Expr):
         super().__init__(left)
         self.opsym = "@"
-        self.classname = "Abs"
 
     def _apply(self, left: int) -> int:
         return abs(left)
@@ -286,7 +285,7 @@ class Print(Control):
 
     def eval(self) -> IntConst:
         result = self.expr.eval()
-        print(f"Quack! {result.value}")
+        print(f"Quack!: {result.value}")
         return result
 
 
@@ -303,14 +302,92 @@ class Read(Expr):
         return "Read()"
 
     def eval(self) -> IntConst:
-        val = input("Quack! Gimme an int!")
+        val = input("Quack! Gimme an int! ")
         return IntConst(int(val))
+
+
+class Comparison(Control):
+    """A relational operation that may yield 'true' or 'false',
+    In the interpreter, relational operators ==, >=, etc
+    return an integer 0 for False or 1 for True, and the "if" and "while"
+    constructs use that value.
+    In the compiler, "if" and "while" delegate that branching
+    to the relational construct, i.e., x < y does not create
+    a value in a register but rather causes a jump if y - x
+    is positive.  Condition code is the condition code for
+    the conditional JUMP after a subtraction, e.g., Z for
+    equality, P for >, PZ for >=.
+    For each comparison, we give two condition codes: One if
+    we want to branch when the condition is true, and another
+    if we want to branch when the condition is false.
+    (Currently the compiler only uses the cond_code_false
+    conditions, because it is jumping to the 'else' branch
+    or out of the loop.)
+    """
+    def __init__(self, left: Expr, right: Expr):
+        self.left = left
+        self.right = right
+
+    def __str__(self) -> str:
+        # Fix this up when you implement code generation
+        return f"{str(self.left)} <comparison> {str(self.right)}"
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({repr(self.left)}, {repr(self.right)})"
+
+    def __eq__(self, other: "Expr") -> bool:
+        return type(self) == type(other) and  \
+            self.left == other.left and \
+            self.right == other.right
+
+    def eval(self) -> "IntConst":
+        """In the interpreter, relations return 0 or 1.
+        Each concrete subclass must define _apply(int, int)->int
+        """
+        left_val = self.left.eval()
+        right_val = self.right.eval()
+        return IntConst(self._apply(left_val.value, right_val.value))
+
+
+class EQ(Comparison):
+    """left == right"""
+
+    def _apply(self, left: int, right: int) -> int:
+        return 1 if left == right else 0
+
+class NE(Comparison):
+    """left != right"""
+
+    def _apply(self, left: int, right: int) -> int:
+        return 1 if left != right else 0
+
+class GT(Comparison):
+    """left > right"""
+
+    def _apply(self, left: int, right: int) -> int:
+        return 1 if left > right else 0
+
+class GE(Comparison):
+    """left >= right"""
+
+    def _apply(self, left: int, right: int) -> int:
+        return 1 if left >= right else 0
+
+class LT(Comparison):
+
+    def _apply(self, left: int, right: int) -> int:
+        return 1 if left < right else 0
+
+class LE(Comparison):
+
+    def _apply(self, left: int, right: int) -> int:
+        return 1 if left <= right else 0
 
 
 class While(Control):
     """Classic while loop."""
 
-    def __init__(self, cond: Expr, expr: Expr):
+    def __init__(self, cond: Comparison, expr: Expr):
         """While cond do expr"""
         self.cond = cond
         self.expr = expr
@@ -332,7 +409,6 @@ class While(Control):
             last = self.expr.eval()
             cond_val = self.cond.eval()
         return last
-
 
 class Pass(Control):
     """
@@ -359,13 +435,16 @@ class If(Control):
     """If with optional Else (no elif)"""
 
     def __init__(self, cond, thenpart, elsepart=Pass()):
-        """While cond do block"""
+        """if cond then block else block fi"""
         self.cond = cond
         self.thenpart = thenpart
         self.elsepart = elsepart
 
     def __str__(self):
         return "if {} then\n{}\nelse\n{}\nfi".format(self.cond, self.thenpart, self.elsepart)
+
+    def __repr__(self):
+        return f"If({repr((self.cond))}, {repr(self.thenpart)}, {repr(self.elsepart)})"
 
     def eval(self) -> IntConst:
         """If statement.  Returns nothing. """
@@ -375,4 +454,6 @@ class If(Control):
         else:
             result = self.elsepart.eval()
         return result
+
+
 

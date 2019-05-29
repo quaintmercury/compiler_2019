@@ -3,18 +3,15 @@
 
 x = 100;
 
-while x do
+while x > 0 do
 
   # If y divides x evenly,
   # then y * (x / y) = x
-
   remainder = x - 5 * (x / 5);
-
-  if remainder then
-     x = x - 1;
-  else
+  if remainder == 0 then
      print x;
-     x = x - 1;
   fi
+  x = x - 1;
+
 od
 

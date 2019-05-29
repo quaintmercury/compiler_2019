@@ -15,13 +15,11 @@ like this:
 
 ```mallard
 #
-# Calculate the factorial of an integer, in an
-# interpreter or by compiling it to Duck Machine
-# object code.
+# Calculate the factorial of an integer.
 #
 x = read;
 fact = 1;
-while x do
+while x > 1 do
     fact = fact * x;
     x = x - 1;
 od
@@ -30,45 +28,37 @@ print fact;
 
 Mallard has variables like x and fact, assignments,
 and simple arithmetic expressions with addition, subtraction, 
-multiplication, and division.  It has loops and if statements,
-but it does not have comparisons, so the condition part of a 
-loop or if is an integer (like *x* in the example above) 
-that are interpreted as False if they are 0 or True if they 
-are any other value.  
+multiplication, and division.  
+It has loops and if statements with arithmetic comparisons like 
+`==` and `>`.  Mallard does not have functions or classes. 
 
 ### Control flow: while and if
 
-The 'while' loop in Mallard is 'while *expr* do *block* od', 
-where *expr* is an expression and *block* is a sequence of statements. 
+The 'while' loop in Mallard is 'while *comparison* do *block* od', 
+where *comparison* is an arithmetic comparison like `==`, `<=', 
+`>`, etc.
+ and *block* is a sequence of statements. 
 
 An 'if' statement in Mallard may have an 'else', but there is
 no 'elif', and the end of an 'if' is marked with 'fi': 
 
 ```mallard
-#
-# It's pretty hard to make good use of 'if' statements
-# without better comparisons ... but I can at least
-# test for equality by subtracting.
-#
 # In this program, the first input is a value to "watch for"
 # in a sequence.  In the rest of the sequence, we count
 # occurrences of that value.  The sequence ends with 0.
 # We print the count of occurrences of that value.
 #
-watch = read ;
-count = 0 ;
-observe = read ;
-while observe do
-    if watch - observe then
-        # do nothing
-    else
-        count = count + 1 ;
+watch = read;
+count = 0;
+observe = read;
+while  observe != 0 do
+    if watch == observe then
+       count = count + 1;
     fi
-    observe = read ;
+    observe = read;
 od
-print count ;
+print count;
 ```
-
 ### Input and output
 
 In Mallard, 'read' is a special expression that reads an 
@@ -87,7 +77,7 @@ not yet run on Duck Machines, because it is written in Python,
 but we may be able to reuse parts of it to build a compiler 
 that produces assembly code for a Duck Machine.  
 
-The Mallard interpreter builds an abstract syntax tree to 
+The Mallard interpreter builds an *abstract syntax tree* to 
 represent a Mallard program, and then evaluates that tree. 
 In other words, it is almost like our calculator program 
 except that it reads a whole file instead of a single 
@@ -105,24 +95,25 @@ The interpreter will parse my Mallard program (the first
 example above) and interact with me as follows: 
 
 ```
-Quack! Gimme an int!5
+Quack! Gimme an int! 5
 Quack! 120
 #Interpretation complete
 ```
 
 You may wish to write a few Mallard programs of your own 
-to test your understand of the language, and so that you 
+to test your understanding of the language, and so that you 
 can list Mallard programming skills on your resumé. 
 
 # From Interpreter to Compiler
 
 We'd like to run our Mallard programs on Duck Machines, but 
 not by writing a Python interpreter to run our Mallard interpreter. 
-Instead, we want to create a *compiler* that reads a Mallard 
-program and writes a Duck Machine assembly language program. 
-(Technically this makes it a *cross-compiler*, since we 
-run the compiler on one kind of computer to produce machine code 
-for a different kind of computer.)  
+Instead, we want to create a translator that reads a Mallard 
+program and writes an equivalent Duck Machine assembly language program. 
+Such translators are called *compilers* for historical 
+reasons.   Technically our translator is a *cross-compiler*, since we 
+run the translator on one kind of computer to produce machine code 
+for a different kind of computer (the Duck machine).   
 
 This should be easy!  Our Mallard programs are limited to 
 integers, and our Duck Machine can compute with integers. 
@@ -317,7 +308,7 @@ What about registers?  Registers r0 and r15 are special, so
 registers r1 through r14 are those we can use in calculations. 
 We will need to allocate and deallocate them during code 
 generation.  There are several ways we could do that, but 
-for the moment a list of available registers seems like a 
+for the moment a list of the names of available registers seems like a 
 reasonable choice. 
 
 ```python
@@ -479,6 +470,12 @@ The outline of our test suite module should look pretty familiar by now.
 In this one I'll factor out a bit more of the code that we use to 
 compare lists of strings.   
 
+For convenience, we'll make `crush` also 
+work with a multi-line (triple-quoted) string, which 
+we will then break into a list of lines. The `Union` type
+from the `typing` module lets us say that input argument to 
+`crush` can be either `str` or `List[str]`. 
+
 ```python
 """Test Codegen:
 Simple unit tests for parts of our code generator.
@@ -493,7 +490,7 @@ build up the full code generator.
 import unittest
 from expr import *
 from codegen_context import Context
-from typing import List
+from typing import List, Union
 
 
 def squish(s: str) -> str:
@@ -503,20 +500,33 @@ def squish(s: str) -> str:
     parts = s.strip().split()
     return " ".join(parts)
 
-def crush(lines: List[str]) -> List[str]:
+def crush(text: Union[str, List[str]]) -> List[str]:
+    """Whether given a single multi-line string or a
+    list of strings (each being one line of text),
+    'crush' returns a list of squished lines.
+    """
+    # If it's a single multi-line string, break
+    # it into lines
+    if isinstance(text, str):
+        lines = text.split("\n")
+    else:
+        # If it's not a string, it better be a list of strings
+        assert isinstance(text, list)
+        lines = text
     squished = [squish(l) for l in lines]
     crushed = [l for l in squished if len(l) > 0]
     return crushed
 
 class AsmTestCase(unittest.TestCase):
 
-    def codeEqual(self, generated: List[str], expected: List[str]) -> bool:
+    def codeEqual(self, generated: List[str], expected: str) -> bool:
         gen = crush(generated)
         exp = crush(expected)
         self.assertEqual(len(gen), len(exp))
         for i in range(len(gen)):
             self.assertEqual(gen[i], exp[i])
-            
+
+
 # test cases will go here. 
 
 if __name__ == "__main__":
@@ -538,7 +548,7 @@ class Test_IntConst_Gen(AsmTestCase):
         expected = """
              LOAD  r12,const_42
         const_42:  DATA 42
-        """.split("\n")
+        """
         generated = context.get_lines()
         self.codeEqual(generated, expected)
 
@@ -549,7 +559,7 @@ class Test_IntConst_Gen(AsmTestCase):
         expected = """
              LOAD  r12,const_n_42
         const_n_42:  DATA -42
-        """.split("\n")
+        """
         generated = context.get_lines()
         self.codeEqual(generated, expected)
 ```
@@ -635,7 +645,7 @@ class Test_Var_Gen(AsmTestCase):
         expected = """
               LOAD  r8,var_silly
          var_silly:  DATA 0
-         """.split("\n")
+         """
         generated = context.get_lines()
         self.codeEqual(generated, expected)
 ```
@@ -643,8 +653,8 @@ class Test_Var_Gen(AsmTestCase):
 ## Assign.gen
 
 We are almost to the point of generating the tiniest real program, 
-```x = 5;```.  We need code for an assignment.  An assignment generates 
-code for the expression on its right hand side (5, in this case), and 
+```x = 7;```.  We need code for an assignment.  An assignment generates 
+code for the expression on its right hand side (7, in this case), and 
 stores the value in the variable on its left hand side.  Easy peasy! 
 
 ```python
@@ -670,7 +680,7 @@ class Test_Assign_Gen(AsmTestCase):
               STORE r5,var_universe
          const_42: DATA 42
          var_universe: DATA 0
-         """.split("\n")
+         """
         generated = context.get_lines()
         self.codeEqual(generated, expected)
 ```
@@ -685,8 +695,9 @@ interpreter.  It places a few lines of comment at the beginning of the output
 file: 
 
 ```python
-    context.add_line("# Lovingly crafted by the robots of CIS 211 2019W")
-    context.add_line("# {} from {}".format(datetime.datetime.now(), args.sourcefile.name))
+    context = codegen_context.Context()
+    context.add_line("# Lovingly crafted by the robots of CIS 211, Spring 2019")
+    context.add_line(f"# {datetime.datetime.now()} from {args.sourcefile.name}")
     context.add_line("#")
 ```
 
@@ -702,10 +713,10 @@ extracting the generated code from the ```Context``` object:
         print("#Compilation complete")
 ```
 
-There is just one more thing we need, though:  We need to allocate a 
-register to pass to as a target.  We've already created the list of 
-available registers in the ```Context``` object.  We need to create 
-two additional ```Context``` methods to manage registers.  They 
+There is just one more thing we need, though:  We need a way to 
+ determine which registers to use.  We've already created the list of 
+names of available registers in the ```Context``` object.  We need to create 
+two additional ```Context``` methods to manage them.  They 
 are very simple ... their code is shorter than their 
 docstrings. 
 
@@ -747,9 +758,8 @@ We can run the compiler on our tiny example program in a
 terminal window: 
 
 ```commandline
-$ python3 compile.py mallard/littlest.mal 
-# Lovingly crafted by the robots of CIS 211 2019W
-# 2019-03-05 20:04:01.710889 from mallard/littlest.mal
+# Lovingly crafted by the robots of CIS 211, Spring 2019
+# 2019-05-27 21:34:12.758372 from mallard/littlest.mal
 #
     LOAD r14,const_7
    STORE  r14,var_x
@@ -762,7 +772,7 @@ var_x:   DATA 0
 ## Seq.gen
 
 Emboldened by success, we may move on to a program that 
-contains *two* assignment statements, or event *three*. 
+contains *two* assignment statements, or even *three*. 
 A sequential block of code is represented by a ```Seq```
 node.  We can see that its ```eval``` method simply 
 executes its left operand and then its right operand. 
@@ -786,8 +796,8 @@ like this:
 
 ```commandline
 $ python3 compile.py mallard/seq.mal 
-# Lovingly crafted by the robots of CIS 211 2019W
-# 2019-03-05 20:18:34.639339 from mallard/seq.mal
+# Lovingly crafted by the robots of CIS 211, Spring 2019
+# 2019-05-29 09:06:38.740161 from mallard/seq.mal
 #
     LOAD r14,const_7
    STORE  r14,var_x
@@ -860,7 +870,7 @@ class Test_Binops_Gen(AsmTestCase):
         ADD  r14,r14,r13
         const_3: DATA 3
         var_x:   DATA 0
-        """.split("\n")
+        """
         generated = context.get_lines()
         self.codeEqual(generated, expected)
 
@@ -875,7 +885,7 @@ class Test_Binops_Gen(AsmTestCase):
         SUB  r14,r14,r13
         const_3: DATA 3
         var_x:   DATA 0
-        """.split("\n")
+        """
         generated = context.get_lines()
         self.codeEqual(generated, expected)
 
@@ -890,7 +900,7 @@ class Test_Binops_Gen(AsmTestCase):
         MUL  r14,r14,r13
         const_3: DATA 3
         var_x:   DATA 0
-        """.split("\n")
+        """
         generated = context.get_lines()
         self.codeEqual(generated, expected)
 
@@ -906,7 +916,7 @@ class Test_Binops_Gen(AsmTestCase):
         DIV  r14,r14,r13
         const_3: DATA 3
         var_x:   DATA 0
-        """.split("\n")
+        """
         generated = context.get_lines()
         self.codeEqual(generated, expected)
 
@@ -930,7 +940,7 @@ class Test_Binops_Gen(AsmTestCase):
         const_3: DATA 3
         var_x: DATA 0
         var_y: DATA 0
-        """.split("\n")
+        """
         generated = context.get_lines()
         self.codeEqual(generated, expected)
 ```
@@ -953,8 +963,8 @@ again at the terminal like this:
 
 ```commandline
 $ python3 compile.py mallard/binops.mal 
-# Lovingly crafted by the robots of CIS 211 2019W
-# 2019-03-05 20:54:09.134153 from mallard/binops.mal
+# Lovingly crafted by the robots of CIS 211, Spring 2019
+# 2019-05-29 09:08:02.064640 from mallard/binops.mal
 #
     LOAD r14,const_7
    STORE  r14,var_x
@@ -974,16 +984,16 @@ $ python3 compile.py mallard/binops.mal
    STORE  r14,var_q
         HALT  r0,r0,r0
 const_7:  DATA 7
+var_q:   DATA 0
 var_x:   DATA 0
 var_y:   DATA 0
 var_z:   DATA 0
-var_q:   DATA 0
 #Compilation complete
 ```
 
 ## Print.gen
 
-As we can generate more and more complex programs, it will 
+As we can generate more complex programs, it will 
 get harder and harder to tell whether the code generation 
 is correct just by looking at it.  We can write tiny test 
 cases for code generation for individual classes, but we'd 
@@ -1003,7 +1013,7 @@ store a value to that address:
 
 ```python
    def gen(self, context: Context, target: str):
-        """We print by storing to the memory-mapped address 510"""
+        """We print by storing to the memory-mapped address 511"""
         self.expr.gen(context, target)
         context.add_line(f"   STORE  {target},r0,r0[511]")
 ```
@@ -1021,8 +1031,8 @@ again from the terminal command line
 
 ```commandline
 $ python3 compile.py mallard/print.mal 
-# Lovingly crafted by the robots of CIS 211 2019W
-# 2019-03-05 21:10:59.867979 from mallard/print.mal
+# Lovingly crafted by the robots of CIS 211, Spring 2019
+# 2019-05-29 09:10:09.925726 from mallard/print.mal
 #
     LOAD r14,const_7
    STORE  r14,var_x
@@ -1041,8 +1051,8 @@ var_y:   DATA 0
 ```
 
 But is it correct?  To find out, we'll save the assembly code 
-to a file, then assemble it, then run it on a Duck Machine.  
-The details of running these latter steps will depend on the relative paths
+to a file, then assemble it, then run it on a Duck 
+Machine.  The details of running these latter steps will depend on the relative paths
 to your projects. 
 
 ```commandline
@@ -1151,7 +1161,7 @@ class Test_Unops_Gen(AsmTestCase):
         LOAD r14,const_8
         SUB  r14,r0,r14 # Flip the sign 
         const_8: DATA 8
-        """.split("\n")
+        """
         generated = context.get_lines()
         self.codeEqual(generated, expected)
 
@@ -1168,7 +1178,7 @@ class Test_Unops_Gen(AsmTestCase):
         SUB r14,r0,r14  # Flip the sign
         already_positive_1:   # </Abs>
         const_n_3:  DATA -3
-        """.split("\n")
+        """
         generated = context.get_lines()
         self.codeEqual(generated, expected)
 ```
@@ -1196,15 +1206,347 @@ print neg;
 
 Our programs are very simple sequences of instructions 
 so far.  Mallard has two branching control flow 
-constructs, *while* loops and *if* statements. 
-Because we don't have comparisons like ```<=``` and ```>```
-in Mallard, we just use an integer expression as a 
-condition, treating 0 as False and anything else as 
-True.  
+constructs, *while* loops and *if* statements.  
+These should generate JUMP instructions to 
+control execution of the program.  For example, 
+a *while* loop should generate a conditional jump 
+to the loop exit, and an unconditional jump to the 
+loop head, to implement the looping control flow: 
 
+![while](img/while.png)
+
+We will implement this in two parts.  The comparison operation 
+classes will take care of conditional branching, and the `While`
+class will be in charge of the overall pattern for the loop.  
+(This way we will be able to re-use the conditional branching 
+logic for *if* statements.) 
+
+The comparison classes like `EQ` (for `==`) and `GE` (for `>=`)
+will not implement a `gen` method to place a value in a register. 
+Instead, they will implement a 
+ `condjump` method that creates a conditional JUMP.  For each of them 
+we will have two options, a JUMP if the relation is true 
+(e.g., for `EQ` the relation is true if the compared values 
+are equal), and a JUMP if the relation is false.  
+
+```python
+    def condjump(self, context: Context, target: str, label: str, jump_cond: bool = True):
+        """Generate jump to label conditional on relation. """
+```
+
+![compare](img/compare.png)
+
+We compare by 
+performing a subtraction.   As usual we would like to factor as 
+ much of the common behavior as possible into an abstract base 
+ class for comparisons, leaving just a little for each
+ particular comparison.  Here is my abstract base 
+class for comparisons:
+
+```python
+class Comparison(Control):
+    """A relational operation that may yield 'true' or 'false',
+    In the interpreter, relational operators ==, >=, etc
+    return an integer 0 for False or 1 for True, and the "if" and "while"
+    constructs use that value.
+    In the compiler, "if" and "while" delegate that branching
+    to the relational construct, i.e., x < y does not create
+    a value in a register but rather causes a jump if y - x
+    is positive.  Condition code is the condition code for
+    the conditional JUMP after a subtraction, e.g., Z for
+    equality, P for >, PZ for >=.
+    For each comparison, we give two condition codes: One if
+    we want to branch when the condition is true, and another
+    if we want to branch when the condition is false.
+    (Currently the compiler only uses the cond_code_false
+    conditions, because it is jumping to the 'else' branch
+    or out of the loop.)
+    """
+    def __init__(self, left: Expr, right: Expr,
+                 opsym: str, cond_code_true: str, cond_code_false: str):
+        self.left = left
+        self.right = right
+        self.opsym = opsym
+        self.cond_code_true = cond_code_true
+        self.cond_code_false = cond_code_false
+
+    def __str__(self) -> str:
+        return f"{str(self.left)} {self.opsym} {str(self.right)}"
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({repr(self.left)}, {repr(self.right)})"
+
+    def __eq__(self, other: "Expr") -> bool:
+        return type(self) == type(other) and  \
+            self.left == other.left and \
+            self.right == other.right
+
+    def eval(self) -> "IntConst":
+        """In the interpreter, relations return 0 or 1.
+        Each concrete subclass must define _apply(int, int)->int
+        """
+        left_val = self.left.eval()
+        right_val = self.right.eval()
+        return IntConst(self._apply(left_val.value, right_val.value))
+
+    def gen(self, context: Context, target: str):
+        """We don't support using relational operators to
+        produce a value (although it would be easy to add).
+        """
+        raise NotImplementedError("Relational operators do not support 'gen'; try 'condjump'")
+
+    def condjump(self, context: Context, target: str, label: str, jump_cond: bool = True):
+        """Generate jump to label conditional on relation. """
+        self.left.gen(context, target)
+        reg = context.allocate_register()
+        self.right.gen(context, reg)
+        if jump_cond:
+            cond = self.cond_code_true
+        else:
+            cond = self.cond_code_false
+        # All relations are implemented by subtraction.  What varies is
+        # the condition code controlling the jump.
+        context.add_line(f"   SUB  r0,{target},{reg}")
+        context.add_line(f"   JUMP/{cond}  {label}  #{self.opsym}")
+        context.free_register(reg)
+```
+
+With this, I need very little to implement the `EQ` comparison class.  It needs an `_apply` method for the interpreter, 
+but for the compiler code generator we can just provide the operator symbol, the condition code for a conditional 
+branch if the relation is true, and a condition code for a conditional branch if the condition is false.  
+
+```python
+class EQ(Comparison):
+    """left == right"""
+
+    def __init__(self, left: Expr, right: Expr):
+        super().__init__(left, right, "==", "Z", "PM")
+
+    def _apply(self, left: int, right: int) -> int:
+        return 1 if left == right else 0
+```
+
+You may not be familiar with the ternary expression used in _apply.  *expr* if *cond* else *expr*  is just Python shorthand 
+for a very simple if/then/else block, compacting it down to a single line. 
+
+You will need to fill in code generation for the other comparisons:  NE (not equal), LT (less than), LE (less than 
+or equal, which I prefer to pronounce as "at most"), GT (greater than), and GE (greater than or equal, which 
+I prefer to pronounce as "at least").  Here are some test cases 
+to check them: 
+
+```python
+class Test_Condjump(AsmTestCase):
+
+    def test_EQ_iftrue(self):
+        """==, jump if true"""
+        context = Context()
+        target = context.allocate_register()
+        e = EQ(IntConst(3), IntConst(5))
+        e.condjump(context, target, "here_if_true")
+        expected = """
+        LOAD  r14,const_3
+        LOAD  r13,const_5
+        SUB   r0,r14,r13
+        JUMP/Z  here_if_true #==
+        const_3: DATA 3
+        const_5: DATA 5
+        """
+        generated = context.get_lines()
+        self.codeEqual(generated, expected)
+
+    def test_EQ_iffalse(self):
+        """==, jump if false"""
+        context = Context()
+        target = context.allocate_register()
+        e = EQ(IntConst(3), IntConst(5))
+        e.condjump(context, target, "here_if_false", jump_cond=False)
+        expected = """
+        LOAD  r14,const_3
+        LOAD  r13,const_5
+        SUB   r0,r14,r13
+        JUMP/PM  here_if_false #==
+        const_3: DATA 3
+        const_5: DATA 5
+        """
+        generated = context.get_lines()
+        self.codeEqual(generated, expected)
+
+    def test_NE_iftrue(self):
+        """!=, jump if true"""
+        context = Context()
+        target = context.allocate_register()
+        e = NE(IntConst(3), IntConst(5))
+        e.condjump(context, target, "here_if_true")
+        expected = """
+        LOAD  r14,const_3
+        LOAD  r13,const_5
+        SUB   r0,r14,r13
+        JUMP/PM  here_if_true #!=
+        const_3: DATA 3
+        const_5: DATA 5
+        """
+        generated = context.get_lines()
+        self.codeEqual(generated, expected)
+
+    def test_NE_iffalse(self):
+        """!=, jump if false"""
+        context = Context()
+        target = context.allocate_register()
+        e = NE(IntConst(3), IntConst(5))
+        e.condjump(context, target, "here_if_false", jump_cond=False)
+        expected = """
+        LOAD  r14,const_3
+        LOAD  r13,const_5
+        SUB   r0,r14,r13
+        JUMP/Z  here_if_false #!=
+        const_3: DATA 3
+        const_5: DATA 5
+        """
+        generated = context.get_lines()
+        self.codeEqual(generated, expected)
+
+    def test_GT_iftrue(self):
+        """>, jump if true"""
+        context = Context()
+        target = context.allocate_register()
+        e = GT(IntConst(3), IntConst(5))
+        e.condjump(context, target, "here_if_true")
+        expected = """
+        LOAD  r14,const_3
+        LOAD  r13,const_5
+        SUB   r0,r14,r13
+        JUMP/P  here_if_true #>
+        const_3: DATA 3
+        const_5: DATA 5
+        """
+        generated = context.get_lines()
+        self.codeEqual(generated, expected)
+
+    def test_GT_iffalse(self):
+        """>, jump if false"""
+        context = Context()
+        target = context.allocate_register()
+        e = GT(IntConst(3), IntConst(5))
+        e.condjump(context, target, "here_if_false", jump_cond=False)
+        expected = """
+        LOAD  r14,const_3
+        LOAD  r13,const_5
+        SUB   r0,r14,r13
+        JUMP/ZM  here_if_false #>
+        const_3: DATA 3
+        const_5: DATA 5
+        """
+        generated = context.get_lines()
+        self.codeEqual(generated, expected)
+
+    def test_GE_iftrue(self):
+        """>=, jump if true"""
+        context = Context()
+        target = context.allocate_register()
+        e = GE(IntConst(3), IntConst(5))
+        e.condjump(context, target, "here_if_true")
+        expected = """
+        LOAD  r14,const_3
+        LOAD  r13,const_5
+        SUB   r0,r14,r13
+        JUMP/PZ  here_if_true #>=
+        const_3: DATA 3
+        const_5: DATA 5
+        """
+        generated = context.get_lines()
+        self.codeEqual(generated, expected)
+
+    def test_GE_iffalse(self):
+        """>=, jump if false"""
+        context = Context()
+        target = context.allocate_register()
+        e = GE(IntConst(3), IntConst(5))
+        e.condjump(context, target, "here_if_false", jump_cond=False)
+        expected = """
+        LOAD  r14,const_3
+        LOAD  r13,const_5
+        SUB   r0,r14,r13
+        JUMP/M  here_if_false #>=
+        const_3: DATA 3
+        const_5: DATA 5
+        """
+        generated = context.get_lines()
+        self.codeEqual(generated, expected)
+
+    def test_LT_iftrue(self):
+        """<, jump if true"""
+        context = Context()
+        target = context.allocate_register()
+        e = LT(IntConst(3), IntConst(5))
+        e.condjump(context, target, "here_if_true")
+        expected = """
+        LOAD  r14,const_3
+        LOAD  r13,const_5
+        SUB   r0,r14,r13
+        JUMP/M  here_if_true #<
+        const_3: DATA 3
+        const_5: DATA 5
+        """
+        generated = context.get_lines()
+        self.codeEqual(generated, expected)
+
+    def test_LT_iffalse(self):
+        """>=, jump if false"""
+        context = Context()
+        target = context.allocate_register()
+        e = LT(IntConst(3), IntConst(5))
+        e.condjump(context, target, "here_if_false", jump_cond=False)
+        expected = """
+        LOAD  r14,const_3
+        LOAD  r13,const_5
+        SUB   r0,r14,r13
+        JUMP/PZ  here_if_false #<
+        const_3: DATA 3
+        const_5: DATA 5
+        """
+        generated = context.get_lines()
+        self.codeEqual(generated, expected)
+
+    def test_LE_iftrue(self):
+        """<=, jump if true"""
+        context = Context()
+        target = context.allocate_register()
+        e = LE(IntConst(3), IntConst(5))
+        e.condjump(context, target, "here_if_true")
+        expected = """
+        LOAD  r14,const_3
+        LOAD  r13,const_5
+        SUB   r0,r14,r13
+        JUMP/MZ  here_if_true #<=
+        const_3: DATA 3
+        const_5: DATA 5
+        """
+        generated = context.get_lines()
+        self.codeEqual(generated, expected)
+
+    def test_LE_iffalse(self):
+        """>=, jump if false"""
+        context = Context()
+        target = context.allocate_register()
+        e = LE(IntConst(3), IntConst(5))
+        e.condjump(context, target, "here_if_false", jump_cond=False)
+        expected = """
+        LOAD  r14,const_3
+        LOAD  r13,const_5
+        SUB   r0,r14,r13
+        JUMP/P  here_if_false #<=
+        const_3: DATA 3
+        const_5: DATA 5
+        """
+        generated = context.get_lines()
+        self.codeEqual(generated, expected)
+```
+
+With comparisons implemented, it is relatively easy 
+to implement while loops.  
 At the head of a while loop, we should check the 
-condition and, if the condition is not true (i.e., 
-if it is zero), exit the loop.  This will be a 
+condition and, if the condition is not true, exit the 
+loop.  This will be a 
 conditional jump to a label just after the loop. 
 At the bottom of the loop, we just jump unconditionally 
 back to the head of the loop.  We have already seen 
@@ -1217,9 +1559,7 @@ for ```While``` can therefore be
         loop_head = context.new_label("while_do")
         loop_exit = context.new_label("od")
         context.add_line(f"{loop_head}:")
-        self.cond.gen(context, target)
-        context.add_line(f"   SUB  r0,{target},r0")
-        context.add_line(f"   JUMP/Z  {loop_exit}")
+        self.cond.condjump(context, target, loop_exit, jump_cond=False)
         self.expr.gen(context, target)
         context.add_line(f"   JUMP  {loop_head}")
         context.add_line(f"{loop_exit}:")
@@ -1233,13 +1573,14 @@ class Test_While_Gen(AsmTestCase):
     def test_while_gen(self):
         context = Context()
         target = context.allocate_register()
-        e = While(Var("x"), Assign(Var("x"), Minus(Var("x"), IntConst(1))))
+        e = While(EQ(Var("x"), Var("x")), Assign(Var("x"), Minus(Var("x"), IntConst(1))))
         e.gen(context, target)
         expected = """
         while_do_1: 
         LOAD  r14,var_x
-        SUB  r0,r14,r0
-        JUMP/Z  od_2
+        LOAD  r13,var_x
+        SUB  r0,r14,r13
+        JUMP/PM  od_2    #==
         LOAD  r14,var_x
         LOAD  r13,const_1
         SUB   r14,r14,r13
@@ -1248,7 +1589,7 @@ class Test_While_Gen(AsmTestCase):
         od_2: 
         const_1: DATA 1
         var_x: DATA 0
-        """.split("\n")
+        """
         generated = context.get_lines()
         self.codeEqual(generated, expected)
 ```
@@ -1270,6 +1611,43 @@ while x do
    print x;
    x = x - 1;
 od
+```
+
+If we run it in the interpreter, we get 
+
+```commandline
+Quack!: 10
+Quack!: 9
+Quack!: 8
+Quack!: 7
+Quack!: 6
+Quack!: 5
+Quack!: 4
+Quack!: 3
+Quack!: 2
+Quack!: 1
+Quack!: 0
+#Interpretation complete
+```
+
+If we use our compiler to translate it to assembly code, then 
+use our assembler (both passes) to create object code, then 
+use our Duck Machine simulator to execute it, we should get 
+almost the same output: 
+
+```commandline
+Quack!: 10
+Quack!: 9
+Quack!: 8
+Quack!: 7
+Quack!: 6
+Quack!: 5
+Quack!: 4
+Quack!: 3
+Quack!: 2
+Quack!: 1
+Quack!: 0
+Halted
 ```
 
 ## Pass.gen
@@ -1326,12 +1704,15 @@ class Test_If_Gen(AsmTestCase):
     def test_if_gen(self):
         context = Context()
         target = context.allocate_register()
-        e = If(Var("x"), Assign(Var("y"), Minus(Var("x"), IntConst(1))), Assign(Var("x"), IntConst(2)))
+        e = If(EQ(Var("x"), IntConst(1)),
+               Assign(Var("y"), Minus(Var("x"), IntConst(1))),
+               Assign(Var("x"), IntConst(2)))
         e.gen(context, target)
         expected = """
         LOAD  r14,var_x
-        SUB  r0,r14,r0
-        JUMP/Z  else_1
+        LOAD  r13,const_1
+        SUB  r0,r14,r13
+        JUMP/PM  else_1 #==
         LOAD  r14,var_x
         LOAD  r13,const_1
         SUB   r14,r14,r13
@@ -1345,7 +1726,7 @@ class Test_If_Gen(AsmTestCase):
         const_2: DATA 2
         var_x: DATA 0
         var_y: DATA 0
-        """.split("\n")
+        """
         generated = context.get_lines()
         self.codeEqual(generated, expected)
 ```
@@ -1362,20 +1743,45 @@ by 5?  Here is ```fives.mal```:
 
 x = 100;
 
-while x do
+while x > 0 do
 
   # If y divides x evenly,
   # then y * (x / y) = x
-
   remainder = x - 5 * (x / 5);
-
-  if remainder then
-     x = x - 1;
-  else
+  if remainder == 0 then
      print x;
-     x = x - 1;
   fi
+  x = x - 1;
+
 od
+```
+
+When I translate this (through all the stages of compilation and assembly)
+to Duck Machine object code, and then run the object code in my Duck 
+Machine simulator, I get: 
+
+```commandline
+Quack!: 100
+Quack!: 95
+Quack!: 90
+Quack!: 85
+Quack!: 80
+Quack!: 75
+Quack!: 70
+Quack!: 65
+Quack!: 60
+Quack!: 55
+Quack!: 50
+Quack!: 45
+Quack!: 40
+Quack!: 35
+Quack!: 30
+Quack!: 25
+Quack!: 20
+Quack!: 15
+Quack!: 10
+Quack!: 5
+Halted
 ```
 
 # Summing up 
