@@ -89,6 +89,22 @@ class Test_Var_Gen(AsmTestCase):
         print(generated)
         self.codeEqual(generated, expected)
 
+class Test_Assign_Gen(AsmTestCase):
+    "Generating code for Variable reference (rvalue)"
+
+    def test_assign(self):
+        context = Context()
+        assignment = Assign( Var("universe"), IntConst(42))
+        assignment.gen(context, "r5")
+        expected = """
+              LOAD  r5,const_42
+              STORE r5,var_universe
+         const_42: DATA 42
+         var_universe: DATA 0
+         """
+        generated = context.get_lines()
+        self.codeEqual(generated, expected)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -73,8 +73,7 @@ class Context(object):
         for constval in sorted(self.consts):
             code.append(f"{self.consts[constval]}:  DATA {constval}")
         for varval in self.vars:
-            print('here', varval)
-            code.append(f"{self.vars[varval]}:  DATA {constval}")
+            code.append(f"{self.vars[varval]}:  DATA 0")
         return code
 
     def get_var_symbol(self, name: str) -> str:
@@ -134,3 +133,23 @@ class Var():
         label = context.get_var_symbol(self.name)
         context.add_line(f"    LOAD {target},{label}")
         return
+
+
+class Assign():
+    """Assignment:  x = E represented as Assign(x, E)"""
+
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def __str__(self) -> str:
+        return f"{self.left} = {self.right}"
+
+    def __repr__(self) -> str:
+        return f"Assign({repr(self.left)}, {repr(self.right)})"
+
+    def gen(self, context: Context, target: str):
+        """Store value of expression into variable"""
+        loc = self.left.lvalue(context)
+        self.right.gen(context, target)
+        context.add_line(f"   STORE  {target},{loc}")
