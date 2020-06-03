@@ -1,5 +1,5 @@
 """
-Driver (main program) for expression compiler. 
+Driver (main program) for expression compiler.
 Input is parsed by llparse.py to create an
 Expr object.  The 'gen' methods in Expr walk over
 the Expr tree and produce assembly code in the
@@ -9,6 +9,7 @@ Context object.
 from llparse import parse, InputError
 from lex import LexicalError
 import codegen_context
+from expr import *
 
 import datetime
 import argparse
