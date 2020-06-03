@@ -454,6 +454,3 @@ class If(Control):
         else:
             result = self.elsepart.eval()
         return result
-
-
-
