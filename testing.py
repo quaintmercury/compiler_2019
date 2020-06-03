@@ -10,7 +10,11 @@ build up the full code generator.
 
 import unittest
 from expr import *
+<<<<<<< HEAD
 from codegen_context import Context
+=======
+from codegen_context import Context, IntConst, Var
+>>>>>>> 77ec172c5ad151383ac9d7283b3706367d8f6192
 from typing import List, Union
 
 
@@ -86,6 +90,10 @@ class Test_Var_Gen(AsmTestCase):
          var_silly:  DATA 0
          """
         generated = context.get_lines()
+<<<<<<< HEAD
+=======
+        print(generated)
+>>>>>>> 77ec172c5ad151383ac9d7283b3706367d8f6192
         self.codeEqual(generated, expected)
 
 class Test_Assign_Gen(AsmTestCase):
@@ -104,6 +112,7 @@ class Test_Assign_Gen(AsmTestCase):
         generated = context.get_lines()
         self.codeEqual(generated, expected)
 
+<<<<<<< HEAD
 class Test_Binops_Gen(AsmTestCase):
     """A simple shakedown of each binary operation"""
 
@@ -454,6 +463,8 @@ class Test_While_Gen(AsmTestCase):
         """
         generated = context.get_lines()
         self.codeEqual(generated, expected)
+=======
+>>>>>>> 77ec172c5ad151383ac9d7283b3706367d8f6192
 
 if __name__ == "__main__":
     unittest.main()
