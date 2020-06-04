@@ -10,11 +10,7 @@ build up the full code generator.
 
 import unittest
 from expr import *
-<<<<<<< HEAD
 from codegen_context import Context
-=======
-from codegen_context import Context, IntConst, Var
->>>>>>> 77ec172c5ad151383ac9d7283b3706367d8f6192
 from typing import List, Union
 
 
@@ -90,10 +86,6 @@ class Test_Var_Gen(AsmTestCase):
          var_silly:  DATA 0
          """
         generated = context.get_lines()
-<<<<<<< HEAD
-=======
-        print(generated)
->>>>>>> 77ec172c5ad151383ac9d7283b3706367d8f6192
         self.codeEqual(generated, expected)
 
 class Test_Assign_Gen(AsmTestCase):
@@ -112,7 +104,7 @@ class Test_Assign_Gen(AsmTestCase):
         generated = context.get_lines()
         self.codeEqual(generated, expected)
 
-<<<<<<< HEAD
+
 class Test_Binops_Gen(AsmTestCase):
     """A simple shakedown of each binary operation"""
 
@@ -463,8 +455,38 @@ class Test_While_Gen(AsmTestCase):
         """
         generated = context.get_lines()
         self.codeEqual(generated, expected)
-=======
->>>>>>> 77ec172c5ad151383ac9d7283b3706367d8f6192
+
+class Test_If_Gen(AsmTestCase):
+
+    def test_if_gen(self):
+        context = Context()
+        target = context.allocate_register()
+        e = If(EQ(Var("x"), IntConst(1)),
+               Assign(Var("y"), Minus(Var("x"), IntConst(1))),
+               Assign(Var("x"), IntConst(2)))
+        e.gen(context, target)
+        expected = """
+        LOAD  r14,var_x
+        LOAD  r13,const_1
+        SUB  r0,r14,r13
+        JUMP/PM  else_1 #==
+        LOAD  r14,var_x
+        LOAD  r13,const_1
+        SUB   r14,r14,r13
+        STORE r14,var_y
+        JUMP  fi_2
+        else_1:
+        LOAD r14,const_2
+        STORE r14,var_x
+        fi_2:
+        const_1: DATA 1
+        const_2: DATA 2
+        var_x: DATA 0
+        var_y: DATA 0
+        """
+        generated = context.get_lines()
+        self.codeEqual(generated, expected)
+
 
 if __name__ == "__main__":
     unittest.main()

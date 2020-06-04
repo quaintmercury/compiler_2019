@@ -550,7 +550,7 @@ class Pass(Control):
         """Does nothing, has no value."""
         return NO_VALUE
 
-    def gen(self, context: Context, target: str):
+    def gen(self, context, target: str):
         pass
 
 
@@ -578,12 +578,13 @@ class If(Control):
             result = self.elsepart.eval()
         return result
 
-    def gen(self, context, target):
+    def gen(self, context, target: str):
         """Looping"""
-        loop_head = context.new_label("while_do")
-        loop_exit = context.new_label("od")
-        context.add_line(f"{loop_head}:")
-        self.cond.condjump(context, target, loop_exit, jump_cond=False)
-        self.expr.gen(context, target)
-        context.add_line(f"   JUMP  {loop_head}")
-        context.add_line(f"{loop_exit}:")
+        else_label = context.new_label("else")
+        end_label = context.new_label("fi")
+        self.cond.condjump(context, target, else_label, jump_cond=False)
+        self.thenpart.gen(context, target)
+        context.add_line(f"   JUMP  {end_label}")
+        context.add_line(f"{else_label}:")
+        self.elsepart.gen(context, target)
+        context.add_line(f"{end_label}:")

@@ -14,10 +14,8 @@ emitted to the output file.
 """
 
 from typing import List
-<<<<<<< HEAD
+
 from expr import *
-=======
->>>>>>> 77ec172c5ad151383ac9d7283b3706367d8f6192
 
 import logging
 logging.basicConfig()
@@ -46,9 +44,8 @@ class Context(object):
         # The available registers
         self.registers = [ f"r{i}" for i in range(1,15)]
 
-<<<<<<< HEAD
         self.label_count = 0
-=======
+
         # Instructions in the source code, as a list of
         # strings.
         self.assm_lines = [ ]
@@ -58,7 +55,7 @@ class Context(object):
         """Add a line of assembly code"""
         self.assm_lines.append(line)
         log.debug("Added line, now {}".format(self.assm_lines))
->>>>>>> 77ec172c5ad151383ac9d7283b3706367d8f6192
+
 
     def get_const_symbol(self, value: int) -> str:
         """Returns the name of the label associated
@@ -73,14 +70,13 @@ class Context(object):
         self.consts[value] = label
         return label
 
-<<<<<<< HEAD
+
     def add_line(self, line: str):
         """Add a line of assembly code"""
         self.assm_lines.append(line)
         log.debug("Added line, now {}".format(self.assm_lines))
 
-=======
->>>>>>> 77ec172c5ad151383ac9d7283b3706367d8f6192
+
     def get_lines(self) -> List[str]:
         """Get all the generated source code, including
         declarations of variables and constants.
@@ -101,7 +97,7 @@ class Context(object):
         self.vars[name] = label
         return label
 
-<<<<<<< HEAD
+
     def allocate_register(self) -> str:
         """Get the name of a register that is not otherwise
         occupied. Keep exclusive access until it is returned with
@@ -119,73 +115,3 @@ class Context(object):
         """Return a unique label starting with prefix"""
         self.label_count += 1
         return f"{prefix}_{self.label_count}"
-=======
-
-class IntConst():
-
-    def __init__(self, value: int):
-        self.value = value
-
-    def __str__(self) -> str:
-        return str(self.value)
-
-    def __repr__(self) -> str:
-        return f"IntConst({self.value})"
-
-    def eval(self) -> "IntConst":
-        return self
-
-    def gen(self, context: Context, target: str):
-        """Generate code into the context object.
-        Result of expression evaluation will be
-        left in target register.
-        """
-        label = context.get_const_symbol(self.value)
-        context.add_line(f"    LOAD {target},{label}")
-        return
-
-class Var():
-
-    def __init__(self, name):
-        self.name = name
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return f"Var({self.name})"
-
-
-    def lvalue(self, context: Context) -> str:
-        """Return the label that the compiler will use for this variable"""
-        return context.get_var_symbol(self.name)
-
-    def gen(self, context: Context, target: str):
-        """Generate code into the context object.
-        Result of expression evaluation will be
-        left in target register.
-        """
-        label = context.get_var_symbol(self.name)
-        context.add_line(f"    LOAD {target},{label}")
-        return
-
-
-class Assign():
-    """Assignment:  x = E represented as Assign(x, E)"""
-
-    def __init__(self, left, right):
-        self.left = left
-        self.right = right
-
-    def __str__(self) -> str:
-        return f"{self.left} = {self.right}"
-
-    def __repr__(self) -> str:
-        return f"Assign({repr(self.left)}, {repr(self.right)})"
-
-    def gen(self, context: Context, target: str):
-        """Store value of expression into variable"""
-        loc = self.left.lvalue(context)
-        self.right.gen(context, target)
-        context.add_line(f"   STORE  {target},{loc}")
->>>>>>> 77ec172c5ad151383ac9d7283b3706367d8f6192
